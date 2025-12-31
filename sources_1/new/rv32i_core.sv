@@ -32,10 +32,11 @@ module rv32i_core (
     output [ 6:0] daddr
 );
 
-    logic regfile_we,alu_src_sel_1, alu_src_sel_2,branch;
+    logic regfile_we,alu_src_sel_1, alu_src_sel_2,branch,jal;
     
     logic [1:0] reg_w_src_sel;
     logic [3:0] alu_control;
+    logic [2:0] size_control;
 
     datapath u_datapath (.*);
 

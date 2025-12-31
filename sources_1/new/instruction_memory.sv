@@ -60,6 +60,11 @@ module instruction_memory (
         rom_file[21] = 32'h00064a37;  // LUI x20, 100
         
         rom_file[22] = 32'h00064a17;  // auipc x20, 100
+        
+        
+        // J-type
+        // rom_file[23] = 32'h06400a6f;  // jal x20, 100
+        rom_file[23] = 32'h06408a67;  // jjalr x20, 100(x1)
 
     end
 

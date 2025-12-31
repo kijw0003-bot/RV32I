@@ -8,9 +8,11 @@ module datapath (
     input         regfile_we,
     input         alu_src_sel_1,
     input         alu_src_sel_2,
-    input  [1:0]       reg_w_src_sel,
+    input  [ 1:0] reg_w_src_sel,
     input         branch,
+    input         jal,
     input  [ 3:0] alu_control,
+    input  [ 2:0] size_control,
     input  [31:0] instr_code,     // instruction code from rom
     input  [31:0] drdata,
     output [31:0] instr_raddr,    // pc to rom
@@ -18,7 +20,15 @@ module datapath (
     output [31:0] dwdata
 );
 
-    logic [31:0] alu_result, rdata1, rdata2, o_imm, alu_src_1,alu_src_2, reg_w_src,next_pc;
+    logic [31:0]
+        alu_result,
+        rdata1,
+        rdata2,
+        o_imm,
+        alu_src_1,
+        alu_src_2,
+        reg_w_src,
+        next_pc;
     logic btaken;
     assign dwdata = rdata2;
     assign daddr  = alu_result[6:0];
@@ -39,14 +49,14 @@ module datapath (
     mux_2x1 U_ALU_SRC_1_MUX (
         .mux_sel(alu_src_sel_1),
         .in_0(rdata1),
-        .in_1(instr_raddr), // PC
+        .in_1(instr_raddr),  // PC
         .mux_out(alu_src_1)
     );
 
     mux_2x1 U_ALU_SRC_2_MUX (
         .mux_sel(alu_src_sel_2),
         .in_0(rdata2),
-        .in_1(o_imm), // IMM
+        .in_1(o_imm),  // IMM
         .mux_out(alu_src_2)
     );
 
@@ -63,7 +73,9 @@ module datapath (
         .rst(rst),
         .branch(branch),
         .btaken(btaken),
+        .jal(jal),
         .imm(o_imm),
+        .alu_result(alu_result),
         .current_pc(instr_raddr),
         .next_pc(next_pc)
     );
@@ -74,13 +86,13 @@ module datapath (
     );
 
     mux_w_data_src_mux U_W_DATA_SRC_MUX (
-    .mux_sel(reg_w_src_sel),
-    .in_0(alu_result),
-    .in_1(drdata),
-    .in_2(o_imm),
-    .in_3(next_pc),
-    .mux_out(reg_w_src)
-);
+        .mux_sel(reg_w_src_sel),
+        .in_0(alu_result),
+        .in_1(drdata),
+        .in_2(o_imm),
+        .in_3(next_pc),
+        .mux_out(reg_w_src)
+    );
 
 
 endmodule
@@ -108,13 +120,6 @@ module register_file (
     end
 
     always_ff @(posedge clk) begin
-        /* if(reset) begin
-           for(int i=0 ; i<32; i++) begin
-            register_file[i] = 0;
-        end     
-        end else begin
-            
-        end */
         if (we) begin
             register_file[waddr] <= wdata;
         end
@@ -197,22 +202,24 @@ module program_counter (
     input         rst,
     input         btaken,
     input         branch,
+    input         jal,
     input  [31:0] imm,
+    input  [31:0] alu_result,
     output [31:0] current_pc,
     output [31:0] next_pc
 );
 
-    logic [31:0]  mux_out;
+    logic [31:0] pc_src_mux_out;
 
     mux_2x1 U_PC_SRC_MUX (
-        .mux_sel(btaken & branch),
-        .in_0(32'd4),
-        .in_1(imm),
-        .mux_out(mux_out)
+        .mux_sel(jal|(btaken & branch)),
+        .in_0(next_pc),
+        .in_1(alu_result),
+        .mux_out(pc_src_mux_out)
     );
 
     alu_pc u_alu_pc (
-        .a(mux_out),
+        .a(32'd4),
         .b(current_pc),
         .o_alu(next_pc)
     );
@@ -220,7 +227,7 @@ module program_counter (
     register u_register (
         .clk(clk),
         .rst(rst),
-        .data_in(next_pc),
+        .data_in(pc_src_mux_out),
         .data_out(current_pc)
     );
 
@@ -272,7 +279,7 @@ module extend_imm (
                 };
             end
 
-            `OP_I_TYPE, `OP_IL_TYPE: begin
+            `OP_I_TYPE, `OP_IL_TYPE,`OP_JALR_TYPE: begin
                 o_imm = {{20{instr_code[31]}}, instr_code[31:20]};
             end
             `OP_B_TYPE: begin
@@ -285,9 +292,16 @@ module extend_imm (
                     1'b0
                 };
             end
-            `OP_U_TYPE, `OP_U_AUI_TYPE : begin
-                o_imm = {instr_code[31:12],{12{1'd0}}};
+
+            `OP_U_TYPE, `OP_U_AUI_TYPE: begin
+                o_imm = {instr_code[31:12], {12{1'd0}}};
             end
+
+            `OP_JAL_TYPE: begin
+                o_imm = {{11{instr_code[31]}},instr_code[31], instr_code[19:12],instr_code[20],instr_code[30:21],1'b0};
+            end
+
+            
 
         endcase
     end
@@ -307,26 +321,26 @@ module mux_2x1 (
 endmodule
 
 module mux_w_data_src_mux (
-    input  [1:0]  mux_sel,
-    input  [31:0] in_0,
-    input  [31:0] in_1,
-    input  [31:0] in_2,
-    input  [31:0] in_3,
+    input [1:0] mux_sel,
+    input [31:0] in_0,
+    input [31:0] in_1,
+    input [31:0] in_2,
+    input [31:0] in_3,
     output logic [31:0] mux_out
 );
 
-always_comb begin
-    mux_out=in_0;
-    case (mux_sel)
-        2'b00: mux_out=in_0;
-        2'b01: mux_out=in_1;
-        2'b10: mux_out=in_2;
-        2'b10: mux_out=in_3;
-        
-    endcase
-end
+    always_comb begin
+        mux_out = in_0;
+        case (mux_sel)
+            2'b00: mux_out = in_0;
+            2'b01: mux_out = in_1;
+            2'b10: mux_out = in_2;
+            2'b10: mux_out = in_3;
 
-    
+        endcase
+    end
+
+
 
 endmodule
 
@@ -340,7 +354,7 @@ module comparator (
 );
 
     always_comb begin
-        btaken=0;
+        btaken = 0;
         case (alu_control)
             {1'b0, `BEQ} :  btaken = a == b ? 1 : 0;
             {1'b0, `BNE} :  btaken = a != b ? 1 : 0;
@@ -353,4 +367,37 @@ module comparator (
     end
 
 
+endmodule
+
+
+module w_h_b_selector (
+    input        [31:0] in_data,
+    input        [ 2:0] size_control,
+    output logic [31:0] out_data
+);
+
+    always_comb begin
+        case (size_control)
+            `SB, `LB: begin
+                out_data = {{24{in_data[7]}}, in_data[7:0]};
+
+            end
+            `SH, `LH: begin
+                out_data = {{16{in_data[15]}}, in_data[15:0]};
+
+            end
+            `SW, `LW: begin
+                out_data = in_data;
+
+            end
+            `LBU: begin
+                out_data = {{24{1'b0}}, in_data[7:0]};
+
+            end
+            `LHU: begin
+                out_data = {{16{1'b0}}, in_data[15:0]};
+
+            end
+        endcase
+    end
 endmodule
