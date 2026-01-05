@@ -1,3 +1,5 @@
+`define SIMULATION
+
 
 // OP_CODE
 `define OP_R_TYPE 7'b011_0011

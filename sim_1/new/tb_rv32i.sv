@@ -18,7 +18,7 @@ module tb_rv32i ();
         #20;
         rst = 0;
 
-        #250;
+        #1000;
         $stop;
     end
 endmodule

@@ -17,7 +17,7 @@ module datapath (
     input  [31:0] instr_code,     // instruction code from rom
     input  [31:0] drdata,
     output [31:0] instr_raddr,    // pc to rom
-    output [ 6:0] daddr,
+    output [ 4:0] daddr,
     output [31:0] dwdata
 );
 
@@ -33,8 +33,8 @@ module datapath (
     logic btaken;
 
     logic [31:0] data_mem_src_mux, data_selected;
-    assign dwdata = data_selected;
-    assign daddr  = alu_result[6:0];
+    assign dwdata = rdata2;
+    assign daddr  = alu_result[6:2];
 
 
     register_file u_register_file (
@@ -104,19 +104,11 @@ module datapath (
         .mux_out(reg_w_src)
     );
 
-    mux_2x1 U_DATA_MEM_SRC_MUX (
-        .mux_sel(regfile_we),
-        .in_0(rdata2),
-        .in_1(drdata),
-        .mux_out(data_mem_src_mux)
-    );
-
     w_h_b_selector U_w_h_b_selector (
-        .in_data(data_mem_src_mux),
+        .in_data(drdata),
         .size_control(size_control),
         .out_data(data_selected)
     );
-
 
 endmodule
 
@@ -134,6 +126,7 @@ module register_file (
 
     logic [31:0] register_file[0:31];
 
+`ifdef SIMULATION
     initial begin
         for (int i = 0; i < 30; i++) begin
             register_file[i] = i;
@@ -142,9 +135,14 @@ module register_file (
         register_file[30] = 32'hfa_ff_7b_80;
         register_file[31] = 32'hff_ff_ff_f0;
     end
-
+`endif  
     always_ff @(posedge clk) begin
-        if (we) begin
+        if(rst) begin
+           
+            register_file[0] = 0;
+            register_file[1] = 32'h10;
+        
+        end else if (we&(waddr!=0)) begin
             register_file[waddr] <= wdata;
         end
     end

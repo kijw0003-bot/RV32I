@@ -82,24 +82,7 @@ module control_unit (
                 branch = 1'b0;
                 alu_control = `ADD;
                 size_control = funct3;
-                // case (funct3)
-                //     `LB: begin
-
-                //     end
-                //     `LH: begin
-
-                //     end
-                //     `LW: begin
-
-                //     end
-                //     `LBU: begin
-
-                //     end
-                //     `LHU: begin
-
-                //     end
-
-                // endcase
+               
             end
 
             `OP_B_TYPE: begin

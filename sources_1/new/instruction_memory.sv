@@ -1,51 +1,52 @@
+
 `timescale 1ns / 1ps
 
 module instruction_memory (
     input  [31:0] instr_raddr,
     output [31:0] instr_code
 );
-    logic [31:0] rom_file [0:31];
+    logic [31:0] rom_file [0:127];
 
     initial begin
         
-        $readmemh("rom_instr_ex0.mem",rom_file); // $readmemh : hexa 코드로  "rom_snstr_ex0.mem" 파일을 읽어서  rom_file 에 로드 하겠다
+        // $readmemh("rom_instr_ex0.mem",rom_file); // $readmemh : hexa 코드로  "rom_snstr_ex0.mem" 파일을 읽어서  rom_file 에 로드 하겠다
                                                  // $readmemb : binary 코드로
 
-        /*
-        // rom_file[0] = 32'h004182b3; // ADD
-        // rom_file[1] = 32'h40740333; // SUB
-        // rom_file[2] = 32'h001818b3;  // SLL
-        // rom_file[3] = 32'h001fa933;  // SLT
-        // rom_file[4] = 32'h001fb9b3;  // SLTU
-        // rom_file[5] = 32'h00184a33;  // XOR
-        // rom_file[6] = 32'h001fdab3;  // SRL
-        // rom_file[7] = 32'h401fdb33;  // SRA
-        // rom_file[8] = 32'h00186bb3;  // OR
-        // rom_file[9] = 32'h00187c33;  // AND
+        
+        rom_file[0] = 32'h004182b3; // ADD
+        rom_file[1] = 32'h40740333; // SUB
+        rom_file[2] = 32'h001818b3;  // SLL
+        rom_file[3] = 32'h001fa933;  // SLT
+        rom_file[4] = 32'h001fb9b3;  // SLTU
+        rom_file[5] = 32'h00184a33;  // XOR
+        rom_file[6] = 32'h001fdab3;  // SRL
+        rom_file[7] = 32'h401fdb33;  // SRA
+        rom_file[8] = 32'h00186bb3;  // OR
+        rom_file[9] = 32'h00187c33;  // AND
 
-        // // S type
-        // rom_file[10] = 32'h01e10123;  // SB x30, 2(x2)
-        // rom_file[11] = 32'h01e11123;  // SH x30, 2(x2)
-        // rom_file[12] = 32'h01e12123;  // SW x30, 2(x2)
+        // S type
+        rom_file[10] = 32'h01e10123;  // SB x30, 2(x2)
+        rom_file[11] = 32'h01e11123;  // SH x30, 2(x2)
+        rom_file[12] = 32'h01e12123;  // SW x30, 2(x2)
 
-        // // I type
-        // rom_file[13] = 32'h00218a13;  // ADDI x20, x3, 2
-        // rom_file[14] = 32'h002faa13;  // SLTI x20, x31, 2
-        // rom_file[15] = 32'h002fba13;  // SLTIU x20, x31, 2
-        // rom_file[16] = 32'h0021ca13;  // XORI x20, x3, 2
-        // rom_file[17] = 32'h0021ea13;  // ORI x20, x3, 2
-        // rom_file[18] = 32'h0021fa13;  // ANDI x20, x3, 2
-        // rom_file[19] = 32'h00219a13;  // SLLI x20, x3, 2
-        // rom_file[20] = 32'h002fda13;  // SRLI x20, x31, 2
-        // rom_file[21] = 32'h402fda13;  // SRAI x20, x31, 2
+        // I type
+        rom_file[13] = 32'h00218a13;  // ADDI x20, x3, 2
+        rom_file[14] = 32'h002faa13;  // SLTI x20, x31, 2
+        rom_file[15] = 32'h002fba13;  // SLTIU x20, x31, 2
+        rom_file[16] = 32'h0021ca13;  // XORI x20, x3, 2
+        rom_file[17] = 32'h0021ea13;  // ORI x20, x3, 2
+        rom_file[18] = 32'h0021fa13;  // ANDI x20, x3, 2
+        rom_file[19] = 32'h00219a13;  // SLLI x20, x3, 2
+        rom_file[20] = 32'h002fda13;  // SRLI x20, x31, 2
+        rom_file[21] = 32'h402fda13;  // SRAI x20, x31, 2
 
         
-        // // IL type
-        // rom_file[22] = 32'h00212a03;  // LW x20, 2(x2)
-        // rom_file[23] = 32'h00211a03;  // LH x20, 2(x2)
-        // rom_file[24] = 32'h00210a03;  // LB x20, 2(x2)
-        // rom_file[25] = 32'h00214a03;  // LBU x20, 2(x2)
-        // rom_file[26] = 32'h00215a03;  // LHU x20, 2(x2)
+        // IL type
+        rom_file[22] = 32'h00212a03;  // LW x20, 2(x2)
+        rom_file[23] = 32'h00211a03;  // LH x20, 2(x2)
+        rom_file[24] = 32'h00210a03;  // LB x20, 2(x2)
+        rom_file[25] = 32'h00214a03;  // LBU x20, 2(x2)
+        rom_file[26] = 32'h00215a03;  // LHU x20, 2(x2)
 
         // // U-type
         // rom_file[27] = 32'h00064a37;  // LUI x20, 100
@@ -56,26 +57,148 @@ module instruction_memory (
         // rom_file[29] = 32'h00f08a67;  // JALR x20, 15(x1)
 
         //B-type
-        rom_file[0] = 32'h00216863;  // BLTU x2, x2, 16
-        rom_file[1] = 32'h00316863;  // BLTU x2, x3, 16
+        // rom_file[0] = 32'h00216863;  // BLTU x2, x2, 16
+        // rom_file[1] = 32'h00316863;  // BLTU x2, x3, 16
 
-        rom_file[5] = 32'h00317863;  // BGEU x2, x3, 16
-        rom_file[6] = 32'h00217863;  // BGEU x2, x2, 16
+        // rom_file[5] = 32'h00317863;  // BGEU x2, x3, 16
+        // rom_file[6] = 32'h00217863;  // BGEU x2, x2, 16
 
-        rom_file[10] = 32'h00310863;  // BEQ x2, x3, 16
-        rom_file[11] = 32'h00210863;  // BEQ x2, x2, 16
+        // rom_file[10] = 32'h00310863;  // BEQ x2, x3, 16
+        // rom_file[11] = 32'h00210863;  // BEQ x2, x2, 16
         
-        rom_file[15] = 32'h00211863;  // BNE x2, x2, 16
-        rom_file[16] = 32'h02311263;  // BNE x2, x2, 36
+        // rom_file[15] = 32'h00211863;  // BNE x2, x2, 16
+        // rom_file[16] = 32'h02311263;  // BNE x2, x2, 36
         
-        rom_file[20] = 32'h00214863;  // BLT x2, x2, 16
-        rom_file[21] = 32'h00314863;  // BLT x2, x3, 16
+        // rom_file[20] = 32'h00214863;  // BLT x2, x2, 16
+        // rom_file[21] = 32'h00314863;  // BLT x2, x3, 16
         
-        rom_file[25] = 32'h00315863;  // BGE x2, x3, 16
-        rom_file[26] = 32'hfe2154e3;  // BGE x2, x2, -24
-        */
+        // rom_file[25] = 32'h00315863;  // BGE x2, x3, 16
+        // rom_file[26] = 32'hfe2154e3;  // BGE x2, x2, -24
+        
     end
 
     assign instr_code = rom_file[instr_raddr[31:2]];
 
 endmodule
+/*
+// ---------------------------------------------------------------------------------
+0000000000000000 <_boot>:
+    08000113           	li	sp,128
+//------------------------------------------------------------- main
+   0000000000000000 <_boot>:
+   0:	fc010113          	addi	sp,sp,-64
+   4:	02112e23          	sw	ra,60(sp)
+   8:	02812c23          	sw	s0,56(sp)
+   c:	04010413          	addi	s0,sp,64
+
+  //----------------------------------------------------------- int a[6] = {4,2,1,0,3};
+  10:	fc042623          	sw	zero,-52(s0)
+  14:	fc042823          	sw	zero,-48(s0)
+  18:	fc042a23          	sw	zero,-44(s0)
+  1c:	fc042c23          	sw	zero,-40(s0)
+  20:	fc042e23          	sw	zero,-36(s0)
+  24:	fe042023          	sw	zero,-32(s0)
+  28:	00400793          	li	a5,4
+  2c:	fcf42623          	sw	a5,-52(s0)
+  30:	00200793          	li	a5,2
+  34:	fcf42823          	sw	a5,-48(s0)
+  38:	00100793          	li	a5,1
+  3c:	fcf42a23          	sw	a5,-44(s0)
+  40:	00300793          	li	a5,3
+  44:	fcf42e23          	sw	a5,-36(s0)
+  //----------------------------------------------------------- int size=5;
+  48:	00500793          	li	a5,5
+  4c:	fef42223          	sw	a5,-28(s0)
+  //----------------------------------------------------------- int i=0,j=0;
+  50:	fe042623          	sw	zero,-20(s0)
+  54:	fe042423          	sw	zero,-24(s0)
+  //----------------------------------------------------------- for(i=0; i< size ; i++){}
+  58:	fe042623          	sw	zero,-20(s0)
+  5c:	09c0006f          	j	f8 <_boot+0xf8>
+  //----------------------------------------------------------- for(j=0; j< size-i ; j++){}
+  60:	fe042423          	sw	zero,-24(s0)
+  64:	0700006f          	j	d4 <_boot+0xd4> 
+  //-----------------------------------------------------------  if(a[j]>a[j+1])
+  68:	fe842703          	lw	a4,-24(s0)
+  6c:	fcc40793          	addi	a5,s0,-52
+  70:	00271713          	slli	a4,a4,0x2
+  74:	00f707b3          	add	a5,a4,a5
+  78:	0007a703          	lw	a4,0(a5)
+  7c:	fe842783          	lw	a5,-24(s0)
+  80:	00178693          	addi	a3,a5,1
+  84:	fcc40793          	addi	a5,s0,-52
+  88:	00269693          	slli	a3,a3,0x2
+  8c:	00f687b3          	add	a5,a3,a5
+  90:	0007a783          	lw	a5,0(a5)
+  94:	02e7da63          	ble	a4,a5,c8 <_boot+0xc8>
+  //----------------------------------------------------------- swap(&a[j],&a[j+1]);
+  98:	fcc40713          	addi	a4,s0,-52
+  9c:	fe842783          	lw	a5,-24(s0)
+  a0:	00279793          	slli	a5,a5,0x2
+  a4:	00f706b3          	add	a3,a4,a5
+  a8:	fe842783          	lw	a5,-24(s0)
+  ac:	00178793          	addi	a5,a5,1
+  b0:	fcc40713          	addi	a4,s0,-52
+  b4:	00279793          	slli	a5,a5,0x2
+  b8:	00f707b3          	add	a5,a4,a5
+  bc:	00078593          	mv	a1,a5
+  c0:	00068513          	mv	a0,a3
+  c4:	05c000ef          	jal	ra,120
+  //----------------------------------------------------------- for j
+  c8:	fe842783          	lw	a5,-24(s0)
+  cc:	00178793          	addi	a5,a5,1
+  d0:	fef42423          	sw	a5,-24(s0)
+  //----------------------------------------------------------- for j
+  d4:	fe442703          	lw	a4,-28(s0)
+  d8:	fec42783          	lw	a5,-20(s0)
+  dc:	40f707b3          	sub	a5,a4,a5
+  e0:	fff78793          	addi	a5,a5,-1
+  e4:	fe842703          	lw	a4,-24(s0)
+  e8:	f8f740e3          	blt	a4,a5,68 <_boot+0x68>
+  //----------------------------------------------------------- for i
+  ec:	fec42783          	lw	a5,-20(s0)
+  f0:	00178793          	addi	a5,a5,1
+  f4:	fef42623          	sw	a5,-20(s0)
+ //----------------------------------------------------------- for i
+ f8:	fe442783          	lw	a5,-28(s0)
+  fc:	fff78793          	addi	a5,a5,-1
+ 100:	fec42703          	lw	a4,-20(s0)
+ 104:	f4f74ee3          	blt	a4,a5,60 <_boot+0x60>
+ //----------------------------------------------------------- return
+ 108:	00000793          	li	a5,0
+ //----------------------------------------------------------- main 함수 return 이후
+ 10c:	00078513          	mv	a0,a5
+ 110:	03c12083          	lw	ra,60(sp)
+ 114:	03812403          	lw	s0,56(sp)
+ 118:	04010113          	addi	sp,sp,64
+ 11c:	00008067          	ret
+
+//----------------------------------------------------------- void swap(int *a, int *b){
+0000000000000120 :
+ 120:	fd010113          	addi	sp,sp,-48
+ 124:	02112623          	sw	ra,44(sp)
+ 128:	02812423          	sw	s0,40(sp)
+ 12c:	03010413          	addi	s0,sp,48
+ 130:	fca42e23          	sw	a0,-36(s0)
+ 134:	fcb42c23          	sw	a1,-40(s0)
+ //----------------------------------------------------------- temp = *b; 
+ 138:	fd842783          	lw	a5,-40(s0)
+ 13c:	0007a783          	lw	a5,0(a5)
+ 140:	fef42623          	sw	a5,-20(s0)
+ //----------------------------------------------------------- *b = *a;
+ 144:	fdc42783          	lw	a5,-36(s0)
+ 148:	0007a703          	lw	a4,0(a5)
+ 14c:	fd842783          	lw	a5,-40(s0)
+ 150:	00e7a023          	sw	a4,0(a5)
+ //----------------------------------------------------------- *a= temp;
+ 154:	fdc42783          	lw	a5,-36(s0)
+ 158:	fec42703          	lw	a4,-20(s0)
+ 15c:	00e7a023          	sw	a4,0(a5)
+ //----------------------------------------------------------- return ;
+ 160:	00000013          	nop
+ //----------------------------------------------------------- return 이후
+ 164:	02c12083          	lw	ra,44(sp)
+ 168:	02812403          	lw	s0,40(sp)
+ 16c:	03010113          	addi	sp,sp,48
+ 170:	00008067          	ret
+*/
