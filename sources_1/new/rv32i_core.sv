@@ -13,10 +13,7 @@ module rv32i_top (
     data_mem U_Data_Mem (.*);
     rv32i_core u_rv32i_core (.*);
 
-
-
 endmodule
-
 
 
 module rv32i_core (
@@ -36,6 +33,7 @@ module rv32i_core (
     
     logic [1:0] reg_w_src_sel;
     logic [3:0] alu_control;
+    logic [ 2:0] comp_control;
     logic [2:0] size_control;
 
     datapath u_datapath (.*);

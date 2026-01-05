@@ -9,6 +9,7 @@ module control_unit (
     output logic        alu_src_sel_2,
     output logic [ 1:0] reg_w_src_sel,
     output logic [ 3:0] alu_control,
+    output logic [ 2:0] comp_control,
     output logic [ 2:0] size_control,
     output logic        branch,
     output logic        jal,
@@ -34,8 +35,10 @@ module control_unit (
         alu_src_sel_2 = 1'b0;
         reg_w_src_sel = 2'b00;
         alu_control = 4'b0000;  // dufault ADD
+        comp_control = 3'b000;
         branch = 1'b0;
-        jal =1'b0;
+        jal = 1'b0;
+        size_control = 3'b000;
         case (opcode)
             `OP_R_TYPE: begin  // to write to reg_file
                 regfile_we = 1'b1;
@@ -78,7 +81,7 @@ module control_unit (
                 reg_w_src_sel = 2'b01;
                 branch = 1'b0;
                 alu_control = `ADD;
-
+                size_control = funct3;
                 // case (funct3)
                 //     `LB: begin
 
@@ -101,12 +104,13 @@ module control_unit (
 
             `OP_B_TYPE: begin
                 regfile_we = 1'b0;
-                alu_src_sel_1 = 1'b0;
-                alu_src_sel_2 = 1'b0;
+                alu_src_sel_1 = 1'b1;
+                alu_src_sel_2 = 1'b1;
                 d_we = 1'b0;
                 reg_w_src_sel = 2'b00;
                 branch = 1'b1;
-                alu_control = {1'b0, funct3};
+                comp_control = funct3;
+                alu_control = `ADD;
             end
             `OP_U_TYPE: begin
                 regfile_we = 1'b1;
@@ -126,7 +130,6 @@ module control_unit (
                 reg_w_src_sel = 2'b00;
                 branch = 1'b0;
                 alu_control = `ADD;
-
             end
 
             `OP_JAL_TYPE: begin
@@ -136,7 +139,7 @@ module control_unit (
                 d_we = 1'b0;
                 reg_w_src_sel = 2'b11;
                 branch = 1'b0;
-                 jal =1'b1;
+                jal = 1'b1;
                 alu_control = `ADD;
             end
             `OP_JALR_TYPE: begin
@@ -146,7 +149,7 @@ module control_unit (
                 d_we = 1'b0;
                 reg_w_src_sel = 2'b11;
                 branch = 1'b0;
-                 jal =1'b1;
+                jal = 1'b1;
                 alu_control = `ADD;
             end
 

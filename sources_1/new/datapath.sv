@@ -12,6 +12,7 @@ module datapath (
     input         branch,
     input         jal,
     input  [ 3:0] alu_control,
+    input  [ 2:0] comp_control,
     input  [ 2:0] size_control,
     input  [31:0] instr_code,     // instruction code from rom
     input  [31:0] drdata,
@@ -30,7 +31,9 @@ module datapath (
         reg_w_src,
         next_pc;
     logic btaken;
-    assign dwdata = rdata2;
+
+    logic [31:0] data_mem_src_mux, data_selected;
+    assign dwdata = data_selected;
     assign daddr  = alu_result[6:0];
 
 
@@ -60,13 +63,21 @@ module datapath (
         .mux_out(alu_src_2)
     );
 
+    comparator u_in_alu_comparator (
+        .a(rdata1),
+        .b(rdata2),
+        .comp_control(comp_control),
+        .btaken(btaken)
+    );
+
     alu u_alu (
         .alu_control(alu_control),
         .a(alu_src_1),
         .b(alu_src_2),
-        .alu_result(alu_result),
-        .btaken(btaken)
+        .alu_result(alu_result)
     );
+
+
 
     program_counter U_PROGRAM_COUNTER (
         .clk(clk),
@@ -74,7 +85,6 @@ module datapath (
         .branch(branch),
         .btaken(btaken),
         .jal(jal),
-        .imm(o_imm),
         .alu_result(alu_result),
         .current_pc(instr_raddr),
         .next_pc(next_pc)
@@ -88,10 +98,23 @@ module datapath (
     mux_w_data_src_mux U_W_DATA_SRC_MUX (
         .mux_sel(reg_w_src_sel),
         .in_0(alu_result),
-        .in_1(drdata),
+        .in_1(data_selected),
         .in_2(o_imm),
         .in_3(next_pc),
         .mux_out(reg_w_src)
+    );
+
+    mux_2x1 U_DATA_MEM_SRC_MUX (
+        .mux_sel(regfile_we),
+        .in_0(rdata2),
+        .in_1(drdata),
+        .mux_out(data_mem_src_mux)
+    );
+
+    w_h_b_selector U_w_h_b_selector (
+        .in_data(data_mem_src_mux),
+        .size_control(size_control),
+        .out_data(data_selected)
     );
 
 
@@ -112,10 +135,11 @@ module register_file (
     logic [31:0] register_file[0:31];
 
     initial begin
-        for (int i = 0; i < 31; i++) begin
+        for (int i = 0; i < 30; i++) begin
             register_file[i] = i;
         end
 
+        register_file[30] = 32'hfa_ff_7b_80;
         register_file[31] = 32'hff_ff_ff_f0;
     end
 
@@ -133,23 +157,15 @@ endmodule
 
 module alu (
     input  [ 3:0] alu_control,
-    input         branch,
     input  [31:0] a,
     input  [31:0] b,
-    output [31:0] alu_result,
-    output        btaken
+    output [31:0] alu_result
+
 );
 
     logic [31:0] r_alu_result;
     assign alu_result = r_alu_result;
 
-
-    comparator u_in_alu_comparator (
-        .a(a),
-        .b(b),
-        .alu_control(alu_control),
-        .btaken(btaken)
-    );
 
 
 
@@ -167,7 +183,6 @@ module alu (
                 r_alu_result = a << b[4:0];
             end
             `SLT: begin
-
                 r_alu_result = ($signed(a) < $signed(b)) ? 1 : 0;
             end
             `SLTU: begin
@@ -203,7 +218,6 @@ module program_counter (
     input         btaken,
     input         branch,
     input         jal,
-    input  [31:0] imm,
     input  [31:0] alu_result,
     output [31:0] current_pc,
     output [31:0] next_pc
@@ -212,7 +226,7 @@ module program_counter (
     logic [31:0] pc_src_mux_out;
 
     mux_2x1 U_PC_SRC_MUX (
-        .mux_sel(jal|(btaken & branch)),
+        .mux_sel(jal | (btaken & branch)),
         .in_0(next_pc),
         .in_1(alu_result),
         .mux_out(pc_src_mux_out)
@@ -279,18 +293,35 @@ module extend_imm (
                 };
             end
 
-            `OP_I_TYPE, `OP_IL_TYPE,`OP_JALR_TYPE: begin
+            `OP_I_TYPE, `OP_IL_TYPE: begin
                 o_imm = {{20{instr_code[31]}}, instr_code[31:20]};
             end
+
             `OP_B_TYPE: begin
-                o_imm = {
-                    {19{instr_code[31]}},
-                    instr_code[31],
-                    instr_code[7],
-                    instr_code[30:25],  // 6개
-                    instr_code[11:8],  // 4개
-                    1'b0
-                };
+                case ({
+                    instr_code[14:12]
+                })
+                    3'b000, 3'b001, 3'b100, 3'b101: begin  // sign extend
+                        o_imm = {
+                            {19{instr_code[31]}},
+                            instr_code[31],
+                            instr_code[7],
+                            instr_code[30:25],  // 6개
+                            instr_code[11:8],  // 4개
+                            1'b0
+                        };
+                    end
+                    3'b110, 3'b111: begin  // unsign extend
+                        o_imm = {
+                            {19{1'b0}},
+                            instr_code[31],
+                            instr_code[7],
+                            instr_code[30:25],  // 6개
+                            instr_code[11:8],  // 4개
+                            1'b0
+                        };
+                    end
+                endcase
             end
 
             `OP_U_TYPE, `OP_U_AUI_TYPE: begin
@@ -298,10 +329,19 @@ module extend_imm (
             end
 
             `OP_JAL_TYPE: begin
-                o_imm = {{11{instr_code[31]}},instr_code[31], instr_code[19:12],instr_code[20],instr_code[30:21],1'b0};
+                o_imm = {
+                    {11{instr_code[31]}},
+                    instr_code[31],
+                    instr_code[19:12],
+                    instr_code[20],
+                    instr_code[30:21],
+                    1'b0
+                };
             end
 
-            
+            `OP_JALR_TYPE: begin
+                o_imm = {{20{instr_code[31]}}, instr_code[31:20]};
+            end
 
         endcase
     end
@@ -335,12 +375,10 @@ module mux_w_data_src_mux (
             2'b00: mux_out = in_0;
             2'b01: mux_out = in_1;
             2'b10: mux_out = in_2;
-            2'b10: mux_out = in_3;
+            2'b11: mux_out = in_3;
 
         endcase
     end
-
-
 
 endmodule
 
@@ -349,19 +387,19 @@ endmodule
 module comparator (
     input        [31:0] a,
     input        [31:0] b,
-    input        [ 3:0] alu_control,
+    input        [ 2:0] comp_control,
     output logic        btaken
 );
 
     always_comb begin
         btaken = 0;
-        case (alu_control)
-            {1'b0, `BEQ} :  btaken = a == b ? 1 : 0;
-            {1'b0, `BNE} :  btaken = a != b ? 1 : 0;
-            {1'b0, `BLT} :  btaken = $signed(a) < $signed(b) ? 1 : 0;
-            {1'b0, `BGE} :  btaken = $signed(a) >= $signed(b) ? 1 : 0;
-            {1'b0, `BLTU} : btaken = a < b ? 1 : 0;
-            {1'b0, `BGEU} : btaken = a < b ? 1 : 0;
+        case (comp_control)
+            `BEQ:  btaken = a == b ? 1 : 0;
+            `BNE:  btaken = a != b ? 1 : 0;
+            `BLT:  btaken = $signed(a) < $signed(b) ? 1 : 0;
+            `BGE:  btaken = $signed(a) >= $signed(b) ? 1 : 0;
+            `BLTU: btaken = a < b ? 1 : 0;
+            `BGEU: btaken = a >= b ? 1 : 0;
 
         endcase
     end
@@ -377,6 +415,7 @@ module w_h_b_selector (
 );
 
     always_comb begin
+        out_data = 32'd0;
         case (size_control)
             `SB, `LB: begin
                 out_data = {{24{in_data[7]}}, in_data[7:0]};
